@@ -1,0 +1,90 @@
+##############################################
+#  ANSIBLE MASTER NODE (CONTROL MACHINE)
+#  RHEL 9.x — OFFLINE + ANSIBLE-NAVIGATOR
+##############################################
+
+=== Step 1: Local Repository ===
+mkdir /repo && mount /dev/sr0 /repo
+
+cat << EOF > /etc/yum.repos.d/local.repo
+[local-rhel9]
+name=RHEL9 Local Repo
+baseurl=file:///repo
+enabled=1
+gpgcheck=0
+EOF
+
+dnf clean all && dnf repolist
+
+=== Step 2: Add Remote user for Ansible ===
+useradd ansible
+
+=== Step 3: Allow Sudo Permission for Remote user ===
+vim /etc/sudoers.d/ansible
+  > ansible ALL=(ALL) NOPASSWD:ALL
+
+=== Step 4: Set Password for Remote User ===
+passwd --stdin ansible
+
+=== Step 5: SSH Remote user using IP/Hostname ===
+ssh root@10.65.x.x
+
+=== Step 6: Install Python & Pip ===
+dnf install -y python3 python3-pip
+Verify:
+python3 --version
+
+=== Step 7: Install Podman (required for ansible-navigator) ===
+dnf install -y podman
+
+=== Step 8: Install Ansible  ===
+dnf install -y ansible-core 
+
+=== Step 9 : Install ansible-navigator Using Python3-pip ===
+python3 -m pip install ansible-navigator
+Verify:
+ansible-navigator --version
+
+=== Step 10 : Download ansible-navigator Using Podman ===
+ansible-navigator images
+Verify:
+podman images
+
+=== Step 11: Create Ansible Working Directory ===
+mkdir -p /etc/ansible/playbooks
+
+=== Step 12: Create Inventory File ===
+cat << EOF > /etc/ansible/hosts
+[all]
+192.168.1.20
+192.168.1.21
+192.168.1.30
+
+[all:vars]
+ansible_user=ansible
+ansible_ssh_pass=Password@123
+ansible_connection=ssh
+EOF
+
+=== Step 13: Create Playbook (ping all nodes) ===
+cat << EOF > /etc/ansible/playbooks/ping_all.yml
+---
+- name: Ping All Nodes
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Test connectivity
+      ping:
+EOF
+
+
+=== Step 9: Run Playbook Using ansible-navigator ===
+ansible-navigator run /etc/ansible/playbooks/ping_all.yml \
+    --config /etc/ansible/ansible-navigator.yml
+
+Expected output:
+SUCCESS => {"ping": "pong"}
+
+############################
+ MASTER NODE SETUP COMPLETE
+############################
